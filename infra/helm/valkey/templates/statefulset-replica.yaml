@@ -104,7 +104,8 @@ spec:
             successThreshold: {{ .Values.replica.livenessProbe.successThreshold }}
             failureThreshold: {{ .Values.replica.livenessProbe.failureThreshold }}
             exec:
-              {{- toYaml .Values.replica.livenessProbe.exec.command | nindent 14 }}
+              command:
+                {{- toYaml .Values.replica.livenessProbe.exec.command | nindent 16 }}
           {{- end }}
           {{- if .Values.replica.readinessProbe.enabled }}
           readinessProbe:
@@ -114,7 +115,8 @@ spec:
             successThreshold: {{ .Values.replica.readinessProbe.successThreshold }}
             failureThreshold: {{ .Values.replica.readinessProbe.failureThreshold }}
             exec:
-              {{- toYaml .Values.replica.readinessProbe.exec.command | nindent 14 }}
+              command:
+                {{- toYaml .Values.replica.readinessProbe.exec.command | nindent 16 }}
           {{- end }}
           resources:
             {{- toYaml .Values.replica.resources | nindent 12 }}

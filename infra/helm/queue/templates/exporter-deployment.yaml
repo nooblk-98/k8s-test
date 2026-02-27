@@ -28,7 +28,7 @@ spec:
           image: "{{ .Values.metrics.exporter.image.repository }}:{{ .Values.metrics.exporter.image.tag }}"
           imagePullPolicy: {{ .Values.metrics.exporter.image.pullPolicy }}
           args:
-            - "--kafka.server={{ include \"queue.fullname\" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.clientPort }}"
+            - "--kafka.server={{ include "queue.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.clientPort }}"
             - "--sasl.enabled"
             - "--sasl.username=$(KAFKA_USERNAME)"
             - "--sasl.password=$(KAFKA_PASSWORD)"

@@ -50,7 +50,21 @@ helm upgrade --install api infra/helm/api -n application
 helm upgrade --install worker infra/helm/worker -n worker
 ```
 
-## 6. Smoke test
+## 6. Wait for pods to be ready
+
+```bash
+kubectl -n application rollout status deploy/api-api
+kubectl -n worker rollout status deploy/worker-worker
+```
+
+If a pod is stuck in Pending, check events:
+
+```bash
+kubectl -n application get pods -o wide
+kubectl -n application describe pod -l app.kubernetes.io/instance=api
+```
+
+## 7. Smoke test
 
 ```bash
 kubectl -n application port-forward svc/api-api 8080:80
