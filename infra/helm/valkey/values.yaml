@@ -236,9 +236,6 @@ replica:
   ## Update strategy
   updateStrategy:
     type: RollingUpdate
-    rollingUpdate:
-      maxUnavailable: 0
-      maxSurge: 1
   
   ## HPA - Horizontal Pod Autoscaler
   autoscaling:
@@ -380,27 +377,23 @@ metrics:
 ## Network Policies
 networkPolicy:
   enabled: true
-  ## Ingress rules
-  ingress:
-    # Allow from same namespace
-    - from:
-      - podSelector: {}
-    # Allow from specific namespaces (e.g., application namespace)
-    - from:
-      - namespaceSelector:
-          matchLabels:
-            name: application
+  ## Ingress rules - empty by default, template provides defaults
+  ingress: []
   ## Egress rules
   egress:
-    # Allow DNS
+    # Allow same-namespace communication
     - to:
-      - namespaceSelector: {}
+      - podSelector: {}
+    # Allow DNS resolution
+    - to:
+      - namespaceSelector:
+          matchLabels:
+            name: kube-system
       ports:
       - protocol: UDP
         port: 53
-    # Allow internal cluster communication
-    - to:
-      - podSelector: {}
+      - protocol: TCP
+        port: 53
 
 ## Service Account
 serviceAccount:

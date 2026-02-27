@@ -14,35 +14,52 @@ spec:
     - Ingress
     - Egress
   ingress:
-    # Allow traffic on Valkey port
-    - ports:
+    {{- if .Values.networkPolicy.ingress }}
+    # Custom ingress rules from values
+    {{- toYaml .Values.networkPolicy.ingress | nindent 4 }}
+    {{- else }}
+    # Default: allow from same namespace
+    - from:
+        - podSelector: {}
+      ports:
         - protocol: TCP
           port: 6379
-      {{- with .Values.networkPolicy.ingress }}
-      {{- toYaml . | nindent 6 }}
-      {{- end }}
-    # Allow traffic on metrics port
+    {{- end }}
     {{- if .Values.metrics.enabled }}
-    - ports:
-        - protocol: TCP
-          port: 9121
-      from:
+    # Allow traffic on metrics port from monitoring namespace
+    - from:
         - namespaceSelector:
             matchLabels:
               name: monitoring
-    {{- end }}
-    # Allow traffic on Sentinel port
-    {{- if .Values.sentinel.enabled }}
-    - ports:
+      ports:
         - protocol: TCP
-          port: 26379
-      from:
+          port: 9121
+    {{- end }}
+    {{- if .Values.sentinel.enabled }}
+    # Allow traffic on Sentinel port from same deployment
+    - from:
         - podSelector:
             matchLabels:
               {{- include "valkey.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 26379
     {{- end }}
   egress:
-    {{- with .Values.networkPolicy.egress }}
-    {{- toYaml . | nindent 4 }}
+    {{- if .Values.networkPolicy.egress }}
+    {{- toYaml .Values.networkPolicy.egress | nindent 4 }}
+    {{- else }}
+    # Default: allow same namespace and DNS
+    - to:
+        - podSelector: {}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
     {{- end }}
 {{- end }}

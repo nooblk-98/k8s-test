@@ -13,26 +13,7 @@ kubectl apply -f infra/base/namespaces.yaml
 kubectl apply -f infra/base/network-policies.yaml
 ```
 
-## 2. Deploy Valkey
-
-```bash
-helm upgrade --install valkey infra/helm/valkey -n infrastructure
-```
-
-## 3. Deploy Kafka
-
-```bash
-helm upgrade --install kafka infra/helm/queue -n infrastructure
-```
-
-## 4. Deploy API and Worker
-
-```bash
-helm upgrade --install api infra/helm/api -n application
-helm upgrade --install worker infra/helm/worker -n worker
-```
-
-## 5. Deploy Monitoring
+## 2. Deploy Monitoring (required for ServiceMonitor/PrometheusRule)
 
 ```bash
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
@@ -48,6 +29,25 @@ helm upgrade --install loki grafana/loki-stack \
   -f infra/monitoring/values-loki.yaml
 
 kubectl apply -f infra/monitoring/grafana-dashboard.yaml
+```
+
+## 3. Deploy Valkey
+
+```bash
+helm upgrade --install valkey infra/helm/valkey -n infrastructure
+```
+
+## 4. Deploy Kafka
+
+```bash
+helm upgrade --install kafka infra/helm/queue -n infrastructure
+```
+
+## 5. Deploy API and Worker
+
+```bash
+helm upgrade --install api infra/helm/api -n application
+helm upgrade --install worker infra/helm/worker -n worker
 ```
 
 ## 6. Smoke test

@@ -74,11 +74,11 @@ Get the password secret name
 Get the password secret key
 */}}
 {{- define "valkey.secretPasswordKey" -}}
-{{- if .Values.auth.existingSecret }}
-{{- .Values.auth.existingSecretPasswordKey }}
-{{- else }}
+{{- if .Values.auth.existingSecret -}}
+{{- .Values.auth.existingSecretPasswordKey -}}
+{{- else -}}
 password
-{{- end }}
+{{- end -}}
 {{- end }}
 
 {{/*

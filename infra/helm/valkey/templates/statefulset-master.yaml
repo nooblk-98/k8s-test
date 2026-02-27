@@ -103,7 +103,8 @@ spec:
             timeoutSeconds: {{ .Values.master.livenessProbe.timeoutSeconds }}
             successThreshold: {{ .Values.master.livenessProbe.successThreshold }}
             failureThreshold: {{ .Values.master.livenessProbe.failureThreshold }}
-            {{- toYaml .Values.master.livenessProbe.exec | nindent 12 }}
+            exec:
+              {{- toYaml .Values.master.livenessProbe.exec.command | nindent 14 }}
           {{- end }}
           {{- if .Values.master.readinessProbe.enabled }}
           readinessProbe:
@@ -112,7 +113,8 @@ spec:
             timeoutSeconds: {{ .Values.master.readinessProbe.timeoutSeconds }}
             successThreshold: {{ .Values.master.readinessProbe.successThreshold }}
             failureThreshold: {{ .Values.master.readinessProbe.failureThreshold }}
-            {{- toYaml .Values.master.readinessProbe.exec | nindent 12 }}
+            exec:
+              {{- toYaml .Values.master.readinessProbe.exec.command | nindent 14 }}
           {{- end }}
           resources:
             {{- toYaml .Values.master.resources | nindent 12 }}
@@ -212,7 +214,4 @@ spec:
         selector:
           {{- toYaml . | nindent 10 }}
         {{- end }}
-  {{- else }}
-        - name: data
-          emptyDir: {}
   {{- end }}
