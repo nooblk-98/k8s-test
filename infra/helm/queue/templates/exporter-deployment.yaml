@@ -1,0 +1,52 @@
+{{- if .Values.metrics.exporter.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "queue.fullname" . }}-exporter
+  labels:
+    {{- include "queue.labels" . | nindent 4 }}
+    app.kubernetes.io/component: exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "queue.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: exporter
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "queue.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: exporter
+    spec:
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: kafka-exporter
+          image: "{{ .Values.metrics.exporter.image.repository }}:{{ .Values.metrics.exporter.image.tag }}"
+          imagePullPolicy: {{ .Values.metrics.exporter.image.pullPolicy }}
+          args:
+            - "--kafka.server={{ include \"queue.fullname\" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.clientPort }}"
+            - "--sasl.enabled"
+            - "--sasl.username=$(KAFKA_USERNAME)"
+            - "--sasl.password=$(KAFKA_PASSWORD)"
+            - "--sasl.mechanism=PLAIN"
+          env:
+            - name: KAFKA_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "queue.fullname" . }}-secret
+                  key: KAFKA_USERNAME
+            - name: KAFKA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "queue.fullname" . }}-secret
+                  key: KAFKA_PASSWORD
+          ports:
+            - name: metrics
+              containerPort: {{ .Values.metrics.exporter.port }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+{{- end }}

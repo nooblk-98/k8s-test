@@ -1,0 +1,84 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: api-queue-worker-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  api-queue-worker.json: |
+    {
+      "uid": "api-queue-worker",
+      "title": "API / Queue / Worker Overview",
+      "schemaVersion": 39,
+      "version": 1,
+      "refresh": "30s",
+      "panels": [
+        {
+          "type": "timeseries",
+          "title": "API Request Rate",
+          "targets": [
+            {
+              "expr": "sum(rate(api_requests_total[5m]))",
+              "legendFormat": "req/s"
+            }
+          ],
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
+        },
+        {
+          "type": "timeseries",
+          "title": "Queue Backlog",
+          "targets": [
+            {
+              "expr": "sum(kafka_consumergroup_lag)",
+              "legendFormat": "messages"
+            }
+          ],
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
+        },
+        {
+          "type": "timeseries",
+          "title": "Worker Processing Rate",
+          "targets": [
+            {
+              "expr": "sum(rate(worker_processed_total[5m]))",
+              "legendFormat": "tasks/s"
+            }
+          ],
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
+        },
+        {
+          "type": "timeseries",
+          "title": "Valkey Ops per Second",
+          "targets": [
+            {
+              "expr": "sum(rate(redis_commands_processed_total[5m]))",
+              "legendFormat": "ops/s"
+            }
+          ],
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}
+        },
+        {
+          "type": "timeseries",
+          "title": "Pod CPU (cores)",
+          "targets": [
+            {
+              "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=~\"application|worker\",container!=\"\"}[5m]))",
+              "legendFormat": "cpu"
+            }
+          ],
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16}
+        },
+        {
+          "type": "timeseries",
+          "title": "Pod Memory (bytes)",
+          "targets": [
+            {
+              "expr": "sum(container_memory_working_set_bytes{namespace=~\"application|worker\",container!=\"\"})",
+              "legendFormat": "memory"
+            }
+          ],
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16}
+        }
+      ]
+    }

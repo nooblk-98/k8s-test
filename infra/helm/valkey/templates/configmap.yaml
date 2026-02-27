@@ -1,0 +1,111 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "valkey.fullname" . }}-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "valkey.labels" . | nindent 4 }}
+data:
+  valkey.conf: |
+    # Valkey configuration file
+    
+    # Network
+    bind 0.0.0.0
+    port 6379
+    protected-mode yes
+    
+    {{- if .Values.auth.enabled }}
+    # Authentication
+    requirepass VALKEY_PASSWORD
+    {{- end }}
+    
+    # Persistence
+    dir /data
+    
+    {{- if .Values.configmap.extraConfig }}
+    # Additional configuration
+    {{ .Values.configmap.extraConfig | nindent 4 }}
+    {{- end }}
+  
+  master.conf: |
+    # Master-specific configuration
+    {{- if .Values.auth.enabled }}
+    requirepass VALKEY_PASSWORD
+    {{- end }}
+  
+  replica.conf: |
+    # Replica-specific configuration
+    replicaof {{ include "valkey.master.servicename" . }} 6379
+    {{- if .Values.auth.enabled }}
+    requirepass VALKEY_PASSWORD
+    masterauth VALKEY_PASSWORD
+    {{- end }}
+    replica-read-only yes
+  
+  sentinel.conf: |
+    # Sentinel configuration
+    port 26379
+    dir /tmp
+    sentinel monitor mymaster {{ include "valkey.master.servicename" . }} 6379 {{ .Values.sentinel.quorum }}
+    {{- if .Values.auth.enabled }}
+    sentinel auth-pass mymaster VALKEY_PASSWORD
+    {{- end }}
+    sentinel down-after-milliseconds mymaster 5000
+    sentinel parallel-syncs mymaster 1
+    sentinel failover-timeout mymaster 10000
+  
+  ping_liveness_local.sh: |
+    #!/bin/sh
+    set -e
+    VALKEY_PASSWORD_FILE=/secrets/password
+    if [ -f "$VALKEY_PASSWORD_FILE" ]; then
+      export VALKEY_PASSWORD="$(cat $VALKEY_PASSWORD_FILE)"
+      response=$(
+        timeout -s 3 $1 \
+        valkey-cli \
+          -h localhost \
+          -p 6379 \
+          -a "$VALKEY_PASSWORD" \
+          ping
+      )
+    else
+      response=$(
+        timeout -s 3 $1 \
+        valkey-cli \
+          -h localhost \
+          -p 6379 \
+          ping
+      )
+    fi
+    if [ "$response" != "PONG" ]; then
+      echo "Liveness probe failed"
+      exit 1
+    fi
+  
+  ping_readiness_local.sh: |
+    #!/bin/sh
+    set -e
+    VALKEY_PASSWORD_FILE=/secrets/password
+    if [ -f "$VALKEY_PASSWORD_FILE" ]; then
+      export VALKEY_PASSWORD="$(cat $VALKEY_PASSWORD_FILE)"
+      response=$(
+        timeout -s 3 $1 \
+        valkey-cli \
+          -h localhost \
+          -p 6379 \
+          -a "$VALKEY_PASSWORD" \
+          ping
+      )
+    else
+      response=$(
+        timeout -s 3 $1 \
+        valkey-cli \
+          -h localhost \
+          -p 6379 \
+          ping
+      )
+    fi
+    if [ "$response" != "PONG" ]; then
+      echo "Readiness probe failed"
+      exit 1
+    fi

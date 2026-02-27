@@ -1,0 +1,65 @@
+{{- if .Values.master.pdb.enabled }}
+apiVersion: {{ include "valkey.pdb.apiVersion" . }}
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "valkey.fullname" . }}-master
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "valkey.labels" . | nindent 4 }}
+    app.kubernetes.io/component: master
+spec:
+  {{- if .Values.master.pdb.minAvailable }}
+  minAvailable: {{ .Values.master.pdb.minAvailable }}
+  {{- end }}
+  {{- if .Values.master.pdb.maxUnavailable }}
+  maxUnavailable: {{ .Values.master.pdb.maxUnavailable }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "valkey.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: master
+{{- end }}
+---
+{{- if .Values.replica.pdb.enabled }}
+apiVersion: {{ include "valkey.pdb.apiVersion" . }}
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "valkey.fullname" . }}-replica
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "valkey.labels" . | nindent 4 }}
+    app.kubernetes.io/component: replica
+spec:
+  {{- if .Values.replica.pdb.minAvailable }}
+  minAvailable: {{ .Values.replica.pdb.minAvailable }}
+  {{- end }}
+  {{- if .Values.replica.pdb.maxUnavailable }}
+  maxUnavailable: {{ .Values.replica.pdb.maxUnavailable }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "valkey.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: replica
+{{- end }}
+---
+{{- if and .Values.sentinel.enabled .Values.sentinel.pdb.enabled }}
+apiVersion: {{ include "valkey.pdb.apiVersion" . }}
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "valkey.fullname" . }}-sentinel
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "valkey.labels" . | nindent 4 }}
+    app.kubernetes.io/component: sentinel
+spec:
+  {{- if .Values.sentinel.pdb.minAvailable }}
+  minAvailable: {{ .Values.sentinel.pdb.minAvailable }}
+  {{- end }}
+  {{- if .Values.sentinel.pdb.maxUnavailable }}
+  maxUnavailable: {{ .Values.sentinel.pdb.maxUnavailable }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "valkey.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: sentinel
+{{- end }}

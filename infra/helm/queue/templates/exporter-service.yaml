@@ -1,0 +1,19 @@
+{{- if .Values.metrics.exporter.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "queue.fullname" . }}-metrics
+  labels:
+    {{- include "queue.labels" . | nindent 4 }}
+    app.kubernetes.io/component: exporter
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: {{ include "queue.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: exporter
+  ports:
+    - name: metrics
+      port: {{ .Values.metrics.exporter.port }}
+      targetPort: metrics
+{{- end }}

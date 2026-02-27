@@ -1,0 +1,25 @@
+# Values for kube-prometheus-stack
+prometheus:
+  prometheusSpec:
+    serviceMonitorSelectorNilUsesHelmValues: false
+    serviceMonitorSelector: {}
+    serviceMonitorNamespaceSelector: {}
+    scrapeInterval: 30s
+    evaluationInterval: 30s
+
+grafana:
+  adminUser: admin
+  adminPassword: change-me
+  service:
+    type: ClusterIP
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      searchNamespace: ALL
+
+kube-state-metrics:
+  enabled: true
+
+nodeExporter:
+  enabled: true

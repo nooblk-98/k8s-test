@@ -1,0 +1,14 @@
+{{- if .Values.pdb.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "queue.fullname" . }}
+  labels:
+    {{- include "queue.labels" . | nindent 4 }}
+spec:
+  minAvailable: {{ .Values.pdb.minAvailable }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "queue.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}

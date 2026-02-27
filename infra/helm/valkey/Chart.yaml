@@ -1,0 +1,15 @@
+apiVersion: v2
+name: valkey
+description: A Helm chart for Valkey (Redis-compatible) with High Availability
+type: application
+version: 1.0.0
+appVersion: "7.2.4"
+keywords:
+  - valkey
+  - redis
+  - cache
+  - nosql
+home: https://github.com/valkey-io/valkey
+maintainers:
+  - name: DevOps Team
+    email: devops@cuegrowth.com

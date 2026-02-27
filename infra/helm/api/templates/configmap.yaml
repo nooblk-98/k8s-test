@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "api.fullname" . }}-config
+  labels:
+    {{- include "api.labels" . | nindent 4 }}
+data:
+  LOG_LEVEL: {{ .Values.config.logLevel | quote }}
+  KAFKA_TOPIC: {{ .Values.config.kafkaTopic | quote }}
+  JWT_REQUIRED: {{ .Values.config.jwtRequired | quote }}
+  VALKEY_HOST: "valkey-master.infrastructure.svc.cluster.local"
+  VALKEY_PORT: "6379"
+  VALKEY_DB: "0"

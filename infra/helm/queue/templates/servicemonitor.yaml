@@ -1,0 +1,23 @@
+{{- if and .Values.serviceMonitor.enabled .Values.metrics.exporter.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "queue.fullname" . }}
+  labels:
+    {{- include "queue.labels" . | nindent 4 }}
+  namespace: {{ .Values.serviceMonitor.namespace }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "queue.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: exporter
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: {{ .Values.serviceMonitor.interval }}
+      scrapeTimeout: {{ .Values.serviceMonitor.scrapeTimeout }}
+{{- end }}

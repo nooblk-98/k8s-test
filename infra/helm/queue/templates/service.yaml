@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "queue.fullname" . }}
+  labels:
+    {{- include "queue.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  selector:
+    app.kubernetes.io/name: {{ include "queue.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: broker
+  ports:
+    - name: client
+      port: {{ .Values.service.clientPort }}
+      targetPort: client
+    - name: controller
+      port: {{ .Values.service.controllerPort }}
+      targetPort: controller

@@ -1,0 +1,218 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "valkey.fullname" . }}-master
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "valkey.labels" . | nindent 4 }}
+    app.kubernetes.io/component: master
+spec:
+  serviceName: {{ include "valkey.master.servicename" . }}
+  replicas: {{ .Values.master.replicaCount }}
+  updateStrategy:
+    {{- toYaml .Values.master.updateStrategy | nindent 4 }}
+  selector:
+    matchLabels:
+      {{- include "valkey.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: master
+  template:
+    metadata:
+      labels:
+        {{- include "valkey.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: master
+        {{- with .Values.master.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- with .Values.master.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- if .Values.serviceAccount.create }}
+      serviceAccountName: {{ include "valkey.serviceAccountName" . }}
+      automountServiceAccountToken: {{ .Values.serviceAccount.automountServiceAccountToken }}
+      {{- end }}
+      {{- if .Values.master.podSecurityContext.enabled }}
+      securityContext:
+        fsGroup: {{ .Values.master.podSecurityContext.fsGroup }}
+        runAsUser: {{ .Values.master.podSecurityContext.runAsUser }}
+        runAsNonRoot: {{ .Values.master.podSecurityContext.runAsNonRoot }}
+        {{- if .Values.master.podSecurityContext.seccompProfile }}
+        seccompProfile:
+          {{- toYaml .Values.master.podSecurityContext.seccompProfile | nindent 10 }}
+        {{- end }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.master.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.master.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.initContainers }}
+      initContainers:
+        {{- toYaml .Values.initContainers | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: valkey
+          image: "{{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- if .Values.master.containerSecurityContext.enabled }}
+          securityContext:
+            runAsUser: {{ .Values.master.containerSecurityContext.runAsUser }}
+            runAsNonRoot: {{ .Values.master.containerSecurityContext.runAsNonRoot }}
+            allowPrivilegeEscalation: {{ .Values.master.containerSecurityContext.allowPrivilegeEscalation }}
+            readOnlyRootFilesystem: {{ .Values.master.containerSecurityContext.readOnlyRootFilesystem }}
+            {{- if .Values.master.containerSecurityContext.capabilities }}
+            capabilities:
+              {{- toYaml .Values.master.containerSecurityContext.capabilities | nindent 14 }}
+            {{- end }}
+          {{- end }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              # Copy config and replace password placeholder
+              cp /config/valkey.conf /tmp/valkey.conf
+              cp /config/master.conf /tmp/master.conf
+              {{- if .Values.auth.enabled }}
+              VALKEY_PASSWORD=$(cat /secrets/password)
+              sed -i "s/VALKEY_PASSWORD/$VALKEY_PASSWORD/g" /tmp/valkey.conf
+              sed -i "s/VALKEY_PASSWORD/$VALKEY_PASSWORD/g" /tmp/master.conf
+              {{- end }}
+              # Start Valkey
+              exec valkey-server /tmp/valkey.conf --include /tmp/master.conf
+          ports:
+            - name: valkey
+              containerPort: 6379
+              protocol: TCP
+          env:
+            - name: VALKEY_REPLICATION_MODE
+              value: "master"
+          {{- if .Values.master.livenessProbe.enabled }}
+          livenessProbe:
+            initialDelaySeconds: {{ .Values.master.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.master.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.master.livenessProbe.timeoutSeconds }}
+            successThreshold: {{ .Values.master.livenessProbe.successThreshold }}
+            failureThreshold: {{ .Values.master.livenessProbe.failureThreshold }}
+            {{- toYaml .Values.master.livenessProbe.exec | nindent 12 }}
+          {{- end }}
+          {{- if .Values.master.readinessProbe.enabled }}
+          readinessProbe:
+            initialDelaySeconds: {{ .Values.master.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.master.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.master.readinessProbe.timeoutSeconds }}
+            successThreshold: {{ .Values.master.readinessProbe.successThreshold }}
+            failureThreshold: {{ .Values.master.readinessProbe.failureThreshold }}
+            {{- toYaml .Values.master.readinessProbe.exec | nindent 12 }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.master.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: config
+              mountPath: /config
+            - name: health
+              mountPath: /health
+            {{- if .Values.auth.enabled }}
+            - name: secret
+              mountPath: /secrets
+              readOnly: true
+            {{- end }}
+            {{- if .Values.extraVolumeMounts }}
+            {{- toYaml .Values.extraVolumeMounts | nindent 12 }}
+            {{- end }}
+        {{- if .Values.metrics.enabled }}
+        - name: metrics
+          image: "{{ .Values.metrics.image.registry }}/{{ .Values.metrics.image.repository }}:{{ .Values.metrics.image.tag }}"
+          imagePullPolicy: {{ .Values.metrics.image.pullPolicy }}
+          securityContext:
+            runAsUser: 1001
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          ports:
+            - name: metrics
+              containerPort: 9121
+              protocol: TCP
+          env:
+            - name: REDIS_ADDR
+              value: "redis://localhost:6379"
+            {{- if .Values.auth.enabled }}
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "valkey.secretName" . }}
+                  key: {{ include "valkey.secretPasswordKey" . }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.metrics.resources | nindent 12 }}
+        {{- end }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "valkey.fullname" . }}-config
+            defaultMode: 0755
+        - name: health
+          configMap:
+            name: {{ include "valkey.fullname" . }}-config
+            defaultMode: 0755
+            items:
+              - key: ping_liveness_local.sh
+                path: ping_liveness_local.sh
+              - key: ping_readiness_local.sh
+                path: ping_readiness_local.sh
+        {{- if .Values.auth.enabled }}
+        - name: secret
+          secret:
+            secretName: {{ include "valkey.secretName" . }}
+            items:
+              - key: {{ include "valkey.secretPasswordKey" . }}
+                path: password
+        {{- end }}
+        {{- if .Values.extraVolumes }}
+        {{- toYaml .Values.extraVolumes | nindent 8 }}
+        {{- end }}
+  {{- if .Values.master.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        labels:
+          {{- include "valkey.labels" . | nindent 10 }}
+          app.kubernetes.io/component: master
+        {{- with .Values.master.persistence.annotations }}
+        annotations:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+      spec:
+        accessModes:
+          {{- range .Values.master.persistence.accessModes }}
+          - {{ . | quote }}
+          {{- end }}
+        {{- if .Values.master.persistence.storageClass }}
+        storageClassName: {{ .Values.master.persistence.storageClass | quote }}
+        {{- else if .Values.global.storageClass }}
+        storageClassName: {{ .Values.global.storageClass | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.master.persistence.size | quote }}
+        {{- with .Values.master.persistence.selector }}
+        selector:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+  {{- else }}
+        - name: data
+          emptyDir: {}
+  {{- end }}

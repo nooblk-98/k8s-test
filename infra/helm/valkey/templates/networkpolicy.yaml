@@ -1,0 +1,48 @@
+{{- if .Values.networkPolicy.enabled }}
+apiVersion: {{ include "valkey.networkPolicy.apiVersion" . }}
+kind: NetworkPolicy
+metadata:
+  name: {{ include "valkey.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "valkey.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "valkey.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow traffic on Valkey port
+    - ports:
+        - protocol: TCP
+          port: 6379
+      {{- with .Values.networkPolicy.ingress }}
+      {{- toYaml . | nindent 6 }}
+      {{- end }}
+    # Allow traffic on metrics port
+    {{- if .Values.metrics.enabled }}
+    - ports:
+        - protocol: TCP
+          port: 9121
+      from:
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+    {{- end }}
+    # Allow traffic on Sentinel port
+    {{- if .Values.sentinel.enabled }}
+    - ports:
+        - protocol: TCP
+          port: 26379
+      from:
+        - podSelector:
+            matchLabels:
+              {{- include "valkey.selectorLabels" . | nindent 14 }}
+    {{- end }}
+  egress:
+    {{- with .Values.networkPolicy.egress }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+{{- end }}

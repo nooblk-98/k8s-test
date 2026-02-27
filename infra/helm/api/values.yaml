@@ -1,0 +1,75 @@
+replicaCount: 2
+
+image:
+  repository: k8s-test/api
+  tag: "0.1.0"
+  pullPolicy: IfNotPresent
+
+serviceAccount:
+  create: true
+  name: "api"
+  automountServiceAccountToken: false
+
+service:
+  type: ClusterIP
+  port: 80
+
+config:
+  logLevel: info
+  kafkaTopic: tasks
+  jwtRequired: true
+
+secrets:
+  kafkaBootstrapServers: "kafka.infrastructure.svc.cluster.local:9092"
+  kafkaUsername: "app"
+  kafkaPassword: "change-me"
+  valkeyPassword: "change-me"
+  jwtSecret: "change-me"
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+livenessProbe:
+  path: /health
+  initialDelaySeconds: 10
+  periodSeconds: 10
+
+readinessProbe:
+  path: /ready
+  initialDelaySeconds: 5
+  periodSeconds: 5
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 70
+
+pdb:
+  enabled: true
+  minAvailable: 1
+
+podSecurityContext:
+  runAsUser: 10001
+  runAsNonRoot: true
+  fsGroup: 10001
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+serviceMonitor:
+  enabled: true
+  interval: 30s
+  scrapeTimeout: 10s
+  namespace: monitoring

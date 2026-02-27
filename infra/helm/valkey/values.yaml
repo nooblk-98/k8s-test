@@ -1,0 +1,469 @@
+# Default values for Valkey (Redis-compatible) Helm Chart
+# This configuration provides High Availability, security, and production-ready settings
+
+## Global settings
+global:
+  storageClass: "standard"  # Change to your StorageClass (gp3, local-path, etc.)
+
+## Valkey image configuration
+image:
+  registry: docker.io
+  repository: valkey/valkey
+  tag: "7.2.4-alpine"
+  pullPolicy: IfNotPresent
+  # pullSecrets:
+  #   - myRegistryKeySecretName
+
+## Architecture: standalone, replication (master-replica)
+architecture: replication
+
+## Authentication
+auth:
+  enabled: true
+  # Password will be auto-generated if not specified and stored in secret
+  password: ""  # Leave empty to auto-generate
+  existingSecret: ""  # Use existing secret
+  existingSecretPasswordKey: "password"
+
+## Master configuration
+master:
+  replicaCount: 1
+  
+  ## Pod Security Context - Run as non-root
+  podSecurityContext:
+    enabled: true
+    fsGroup: 1001
+    runAsUser: 1001
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+  
+  containerSecurityContext:
+    enabled: true
+    runAsUser: 1001
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+  
+  ## Resource requests and limits
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+  
+  ## Liveness and Readiness probes
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    successThreshold: 1
+    failureThreshold: 5
+    exec:
+      command:
+        - sh
+        - -c
+        - /health/ping_liveness_local.sh 5
+  
+  readinessProbe:
+    enabled: true
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 3
+    successThreshold: 1
+    failureThreshold: 5
+    exec:
+      command:
+        - sh
+        - -c
+        - /health/ping_readiness_local.sh 5
+  
+  ## Persistence
+  persistence:
+    enabled: true
+    storageClass: ""  # Uses global.storageClass if empty
+    accessModes:
+      - ReadWriteOnce
+    size: 8Gi
+    annotations: {}
+    selector: {}
+  
+  ## Service configuration
+  service:
+    type: ClusterIP
+    port: 6379
+    annotations: {}
+  
+  ## Pod Disruption Budget
+  pdb:
+    enabled: true
+    minAvailable: 1
+  
+  ## Affinity and anti-affinity
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: valkey
+                app.kubernetes.io/component: master
+            topologyKey: kubernetes.io/hostname
+  
+  ## Node selector
+  nodeSelector: {}
+  
+  ## Tolerations
+  tolerations: []
+  
+  ## Update strategy
+  updateStrategy:
+    type: RollingUpdate
+  
+  ## Pod labels
+  podLabels: {}
+  
+  ## Pod annotations
+  podAnnotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9121"
+
+## Replica configuration
+replica:
+  replicaCount: 2
+  
+  ## Pod Security Context - Run as non-root
+  podSecurityContext:
+    enabled: true
+    fsGroup: 1001
+    runAsUser: 1001
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+  
+  containerSecurityContext:
+    enabled: true
+    runAsUser: 1001
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+  
+  ## Resource requests and limits
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+  
+  ## Liveness and Readiness probes
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    successThreshold: 1
+    failureThreshold: 5
+    exec:
+      command:
+        - sh
+        - -c
+        - /health/ping_liveness_local.sh 5
+  
+  readinessProbe:
+    enabled: true
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 3
+    successThreshold: 1
+    failureThreshold: 5
+    exec:
+      command:
+        - sh
+        - -c
+        - /health/ping_readiness_local.sh 5
+  
+  ## Persistence
+  persistence:
+    enabled: true
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+    size: 8Gi
+    annotations: {}
+    selector: {}
+  
+  ## Service configuration
+  service:
+    type: ClusterIP
+    port: 6379
+    annotations: {}
+  
+  ## Pod Disruption Budget
+  pdb:
+    enabled: true
+    minAvailable: 1
+  
+  ## Affinity and anti-affinity
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: valkey
+                app.kubernetes.io/component: replica
+            topologyKey: kubernetes.io/hostname
+  
+  ## Node selector
+  nodeSelector: {}
+  
+  ## Tolerations
+  tolerations: []
+  
+  ## Update strategy
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  
+  ## HPA - Horizontal Pod Autoscaler
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPU: 70
+    targetMemory: 80
+  
+  ## Pod labels
+  podLabels: {}
+  
+  ## Pod annotations
+  podAnnotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9121"
+
+## Sentinel configuration (for automatic failover)
+sentinel:
+  enabled: true
+  image:
+    registry: docker.io
+    repository: valkey/valkey
+    tag: "7.2.4-alpine"
+  
+  replicaCount: 3
+  
+  ## Quorum - minimum sentinels to agree on failover
+  quorum: 2
+  
+  ## Pod Security Context
+  podSecurityContext:
+    enabled: true
+    fsGroup: 1001
+    runAsUser: 1001
+    runAsNonRoot: true
+  
+  containerSecurityContext:
+    enabled: true
+    runAsUser: 1001
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+  
+  ## Resources
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  
+  ## Liveness and Readiness probes
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 20
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 5
+  
+  readinessProbe:
+    enabled: true
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 5
+  
+  service:
+    type: ClusterIP
+    port: 26379
+  
+  ## Pod Disruption Budget
+  pdb:
+    enabled: true
+    minAvailable: 2
+
+## Metrics exporter (Prometheus)
+metrics:
+  enabled: true
+  image:
+    registry: docker.io
+    repository: oliver006/redis_exporter
+    tag: v1.55.0-alpine
+    pullPolicy: IfNotPresent
+  
+  ## Resources for metrics exporter
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+  
+  ## Service Monitor for Prometheus Operator
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+    scrapeTimeout: 10s
+    namespace: ""
+    labels: {}
+  
+  ## Prometheus Rules
+  prometheusRule:
+    enabled: true
+    namespace: ""
+    labels: {}
+    rules:
+      - alert: ValkeyDown
+        expr: valkey_up == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Valkey instance is down"
+          description: "Valkey instance {{ $labels.instance }} is down"
+      
+      - alert: ValkeyHighMemoryUsage
+        expr: valkey_memory_used_bytes / valkey_memory_max_bytes * 100 > 90
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Valkey memory usage is high"
+          description: "Valkey instance {{ $labels.instance }} memory usage is above 90%"
+      
+      - alert: ValkeyReplicationBroken
+        expr: valkey_connected_slaves == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Valkey replication is broken"
+          description: "Valkey master has no connected replicas"
+
+## Network Policies
+networkPolicy:
+  enabled: true
+  ## Ingress rules
+  ingress:
+    # Allow from same namespace
+    - from:
+      - podSelector: {}
+    # Allow from specific namespaces (e.g., application namespace)
+    - from:
+      - namespaceSelector:
+          matchLabels:
+            name: application
+  ## Egress rules
+  egress:
+    # Allow DNS
+    - to:
+      - namespaceSelector: {}
+      ports:
+      - protocol: UDP
+        port: 53
+    # Allow internal cluster communication
+    - to:
+      - podSelector: {}
+
+## Service Account
+serviceAccount:
+  create: true
+  name: "valkey"
+  annotations: {}
+  automountServiceAccountToken: false
+
+## ConfigMap for custom configuration
+configmap:
+  # Additional Valkey configuration
+  extraConfig: |
+    # Persistence settings
+    save 900 1
+    save 300 10
+    save 60 10000
+    
+    # Memory management
+    maxmemory-policy allkeys-lru
+    
+    # Append Only File
+    appendonly yes
+    appendfsync everysec
+    
+    # Performance tuning
+    tcp-backlog 511
+    timeout 0
+    tcp-keepalive 300
+    
+    # Slow log
+    slowlog-log-slower-than 10000
+    slowlog-max-len 128
+    
+    # Client output buffer limits
+    client-output-buffer-limit normal 0 0 0
+    client-output-buffer-limit replica 256mb 64mb 60
+    client-output-buffer-limit pubsub 32mb 8mb 60
+
+## Init containers
+initContainers:
+  - name: system-tuning
+    image: busybox:latest
+    command:
+      - /bin/sh
+      - -c
+      - |
+        echo "Running system tuning..."
+        # These would require privileged mode, disabled for security
+        # sysctl -w net.core.somaxconn=65535
+        # echo never > /sys/kernel/mm/transparent_hugepage/enabled
+    securityContext:
+      runAsUser: 0
+      runAsNonRoot: false
+
+## Volume mounts for tmp and cache
+extraVolumes:
+  - name: tmp
+    emptyDir: {}
+  - name: cache
+    emptyDir: {}
+
+extraVolumeMounts:
+  - name: tmp
+    mountPath: /tmp
+  - name: cache
+    mountPath: /var/cache
