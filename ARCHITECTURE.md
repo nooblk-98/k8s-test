@@ -5,7 +5,7 @@ This repo describes a small production-like Kubernetes setup with namespace isol
 
 ## Components
 - API (FastAPI): accepts tasks and exposes stats/metrics.
-- Kafka: single-node KRaft broker with SASL/PLAIN auth.
+- Kafka: single node KRaft broker with SASL/PLAIN auth.
 - Worker (FastAPI): consumes tasks, writes results to Valkey, exposes metrics.
 - Valkey: HA with master/replicas, persistence, and exporter.
 - Observability: Prometheus/Grafana/Loki (optional in this repo).
