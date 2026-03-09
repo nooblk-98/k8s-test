@@ -1,7 +1,7 @@
 # Architecture
 
 ## Summary
-This repo describes a small production-like Kubernetes setup with namespace isolation, strict network policies, non-root workloads, resource limits, probes, HPA, PDBs, and rolling updates. The system is a simple pipeline: API -> Kafka -> Worker -> Valkey.
+This repo describes a small production  like Kubernetes setup with namespace isolation, strict network policies, non root workloads, resource limits, probes, HPA, PDBs, and rolling updates. The system is a simple pipeline: API -> Kafka -> Worker -> Valkey.
 
 ## Components
 - API (FastAPI): accepts tasks and exposes stats/metrics.
